@@ -2,6 +2,8 @@
 
 AI-powered PDF text extraction with support for large files, built with Docker, FastAPI, and modern web technologies.
 
+<img width="1298" height="722" alt="immagine" src="https://github.com/user-attachments/assets/39f7c41f-bb34-4b94-8a9e-f098b1aac58a" />
+
 ## Features
 
 - **AI-Powered Extraction**: Uses Tesseract OCR and PyMuPDF for accurate text extraction
