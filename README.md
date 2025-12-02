@@ -3,6 +3,8 @@
 AI-powered PDF text extraction with support for large files, built with Docker, FastAPI, and modern web technologies.
 
 <img width="1298" height="722" alt="immagine" src="https://github.com/user-attachments/assets/39f7c41f-bb34-4b94-8a9e-f098b1aac58a" />
+<img width="1298" height="722" alt="immagine" src="https://github.com/user-attachments/assets/888caa8d-24e4-47ec-8cdc-0ebc99b1db0b" />
+<img width="1280" height="629" alt="immagine" src="https://github.com/user-attachments/assets/11439482-bf5a-43c7-a19e-f17ed10a2326" />
 
 ## Features
 
