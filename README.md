@@ -6,6 +6,10 @@ AI-powered PDF text extraction with support for large files, built with Docker, 
 <img width="1298" height="722" alt="immagine" src="https://github.com/user-attachments/assets/888caa8d-24e4-47ec-8cdc-0ebc99b1db0b" />
 <img width="1280" height="629" alt="immagine" src="https://github.com/user-attachments/assets/11439482-bf5a-43c7-a19e-f17ed10a2326" />
 
+<a href="https://www.buymeacoffee.com/manzolo">
+  <img src=".github/blue-button.png" alt="Buy Me A Coffee" width="200">
+</a>
+
 ## Features
 
 - **AI-Powered Extraction**: Uses Tesseract OCR and PyMuPDF for accurate text extraction
