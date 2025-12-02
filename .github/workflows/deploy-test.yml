@@ -43,12 +43,12 @@ jobs:
       - name: Build Docker images
         run: |
           echo "Building Docker images..."
-          docker-compose build --progress=plain
+          docker compose build --progress=plain
 
       - name: Start services
         run: |
           echo "Starting services..."
-          docker-compose up -d
+          docker compose up -d
 
           echo "Waiting for services to be ready..."
           sleep 10
@@ -72,15 +72,15 @@ jobs:
       - name: Display service status
         run: |
           echo "=== Docker Services Status ==="
-          docker-compose ps
+          docker compose ps
 
           echo ""
           echo "=== Backend Logs (last 50 lines) ==="
-          docker-compose logs --tail=50 backend
+          docker compose logs --tail=50 backend
 
           echo ""
           echo "=== Frontend Logs (last 20 lines) ==="
-          docker-compose logs --tail=20 frontend
+          docker compose logs --tail=20 frontend
 
       - name: Test API - Health Check
         run: |
@@ -202,7 +202,7 @@ jobs:
           echo "Commit: ${{ github.sha }}" >> test-report.txt
           echo "" >> test-report.txt
           echo "Services Status:" >> test-report.txt
-          docker-compose ps >> test-report.txt
+          docker compose ps >> test-report.txt
           echo "" >> test-report.txt
           echo "Health Check:" >> test-report.txt
           curl -s http://localhost:${{ env.BACKEND_PORT }}/health >> test-report.txt
@@ -219,8 +219,8 @@ jobs:
         if: always()
         run: |
           echo "Cleaning up..."
-          docker-compose logs > docker-logs.txt
-          docker-compose down -v
+          docker compose logs > docker-logs.txt
+          docker compose down -v
 
       - name: Upload Docker logs
         if: failure()
