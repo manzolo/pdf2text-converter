@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF2Text Converter - AI-Powered PDF Text Extraction</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PDF2Text Converter</h1>
+            <p class="subtitle">AI-Powered Text Extraction from PDFs</p>
+        </header>
+
+        <main>
+            <!-- Status Panel -->
+            <div class="status-panel" id="statusPanel">
+                <div class="status-item">
+                    <span class="status-label">Status:</span>
+                    <span class="status-value" id="apiStatus">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">GPU:</span>
+                    <span class="status-value" id="gpuStatus">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Method:</span>
+                    <span class="status-value" id="extractionMethod">-</span>
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <h2>Drop PDF file here or click to browse</h2>
+                    <p>Maximum file size: <span id="maxFileSize">500</span>MB</p>
+                    <input type="file" id="fileInput" accept=".pdf" hidden>
+                    <button class="btn btn-primary" id="browseBtn">Browse Files</button>
+                </div>
+
+                <!-- Options -->
+                <div class="options-section" id="optionsSection" style="display: none;">
+                    <h3>Processing Options</h3>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="useOcrCheckbox" checked>
+                            Use OCR for image-based PDFs
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="chunkProcessingCheckbox" checked>
+                            Enable chunk processing for large files
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="removeRepetitiveCheckbox" checked>
+                            Remove repeated headers/footers
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="checkbox" id="removeCopyrightCheckbox" checked>
+                            Remove copyright notices
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label for="languageSelect">OCR Language:</label>
+                        <select id="languageSelect">
+                            <option value="eng" selected>English</option>
+                            <option value="ita">Italian</option>
+                            <option value="fra">French</option>
+                            <option value="deu">German</option>
+                            <option value="spa">Spanish</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label>
+                            <input type="radio" name="processingMode" value="standard" checked>
+                            Standard Processing
+                        </label>
+                        <label>
+                            <input type="radio" name="processingMode" value="streaming">
+                            Streaming (Real-time feedback)
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" id="processBtn">Process PDF</button>
+                    <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </section>
+
+            <!-- Progress Section -->
+            <section class="progress-section" id="progressSection" style="display: none;">
+                <h3>Processing...</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">Uploading file...</p>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h3>Extracted Text</h3>
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" id="copyBtn">Copy to Clipboard</button>
+                        <button class="btn btn-secondary" id="downloadBtn">Download as TXT</button>
+                        <button class="btn btn-primary" id="newFileBtn">Process Another File</button>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="metadata" id="metadata"></div>
+
+                <!-- Text Output -->
+                <div class="text-output">
+                    <pre id="extractedText"></pre>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-content">
+                    <h3>Error</h3>
+                    <p id="errorMessage"></p>
+                    <button class="btn btn-primary" id="retryBtn">Try Again</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Powered by FastAPI, PyMuPDF, and Tesseract OCR</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

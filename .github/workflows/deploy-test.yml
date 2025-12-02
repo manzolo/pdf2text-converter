@@ -1,0 +1,242 @@
+name: Deploy and Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  FRONTEND_PORT: 8080
+  BACKEND_PORT: 8000
+
+jobs:
+  test:
+    name: Build, Deploy and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env
+          echo "FRONTEND_PORT=${{ env.FRONTEND_PORT }}" >> .env
+          echo "BACKEND_PORT=${{ env.BACKEND_PORT }}" >> .env
+          echo "USE_GPU=false" >> .env
+          cat .env
+
+      - name: Verify test.pdf exists
+        run: |
+          if [ ! -f uploads/test.pdf ]; then
+            echo "❌ Error: uploads/test.pdf not found!"
+            echo "Please add a test.pdf file to the uploads directory"
+            exit 1
+          fi
+          echo "✅ Test PDF found: $(ls -lh uploads/test.pdf)"
+
+      - name: Build Docker images
+        run: |
+          echo "Building Docker images..."
+          docker-compose build --progress=plain
+
+      - name: Start services
+        run: |
+          echo "Starting services..."
+          docker-compose up -d
+
+          echo "Waiting for services to be ready..."
+          sleep 10
+
+      - name: Check service health
+        run: |
+          echo "Checking backend health..."
+          for i in {1..30}; do
+            if curl -f http://localhost:${{ env.BACKEND_PORT }}/health; then
+              echo "✅ Backend is healthy"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+          echo ""
+          echo "Checking frontend..."
+          curl -I http://localhost:${{ env.FRONTEND_PORT }}/
+
+      - name: Display service status
+        run: |
+          echo "=== Docker Services Status ==="
+          docker-compose ps
+
+          echo ""
+          echo "=== Backend Logs (last 50 lines) ==="
+          docker-compose logs --tail=50 backend
+
+          echo ""
+          echo "=== Frontend Logs (last 20 lines) ==="
+          docker-compose logs --tail=20 frontend
+
+      - name: Test API - Health Check
+        run: |
+          echo "Testing API health endpoint..."
+          curl -f http://localhost:${{ env.BACKEND_PORT }}/health | jq '.'
+
+      - name: Test API - Status
+        run: |
+          echo "Testing API status endpoint..."
+          curl -f http://localhost:${{ env.BACKEND_PORT }}/api/status | jq '.'
+
+      - name: Test PDF Extraction (without filtering)
+        run: |
+          echo "Testing PDF extraction without filtering..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "http://localhost:${{ env.BACKEND_PORT }}/api/extract?use_ocr=true&chunk_processing=false&language=eng&remove_repetitive=false&remove_copyright=false" \
+            -F "file=@uploads/test.pdf")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Test failed with HTTP $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+          echo "✅ Extraction successful"
+          echo "$body" | jq '{success, filename, pages, total_chars}'
+
+      - name: Test PDF Extraction (with filtering)
+        run: |
+          echo "Testing PDF extraction with filtering..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "http://localhost:${{ env.BACKEND_PORT }}/api/extract?use_ocr=true&chunk_processing=false&language=eng&remove_repetitive=true&remove_copyright=true" \
+            -F "file=@uploads/test.pdf")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Test failed with HTTP $http_code"
+            echo "$body"
+            exit 1
+          fi
+
+          echo "✅ Extraction with filtering successful"
+          echo "$body" | jq '{success, filename, pages, total_chars, text_preview: (.text | .[0:200])}'
+
+      - name: Test Frontend Access
+        run: |
+          echo "Testing frontend accessibility..."
+          curl -f http://localhost:${{ env.FRONTEND_PORT }}/ > /dev/null
+          echo "✅ Frontend is accessible"
+
+      - name: Test API Documentation
+        run: |
+          echo "Testing API documentation..."
+          curl -f http://localhost:${{ env.BACKEND_PORT }}/docs > /dev/null
+          echo "✅ API docs accessible"
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+
+          # Test different languages
+          for lang in eng ita fra deu spa; do
+            echo "Testing language: $lang"
+            curl -s -X POST \
+              "http://localhost:${{ env.BACKEND_PORT }}/api/extract?language=$lang&chunk_processing=false" \
+              -F "file=@uploads/test.pdf" | jq -r '.success' | grep -q true || exit 1
+          done
+
+          echo "✅ All language tests passed"
+
+      - name: Benchmark extraction speed
+        run: |
+          echo "Benchmarking extraction speed..."
+          start_time=$(date +%s)
+
+          curl -s -X POST \
+            "http://localhost:${{ env.BACKEND_PORT }}/api/extract?use_ocr=true" \
+            -F "file=@uploads/test.pdf" > /tmp/result.json
+
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+
+          pages=$(jq -r '.pages' /tmp/result.json)
+          chars=$(jq -r '.total_chars' /tmp/result.json)
+
+          echo "📊 Benchmark Results:"
+          echo "  Duration: ${duration}s"
+          echo "  Pages: $pages"
+          echo "  Characters: $chars"
+          echo "  Speed: $(echo "scale=2; $pages / $duration" | bc) pages/sec"
+
+      - name: Test error handling
+        run: |
+          echo "Testing error handling..."
+
+          # Test with non-PDF file
+          echo "test" > /tmp/test.txt
+          http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            "http://localhost:${{ env.BACKEND_PORT }}/api/extract" \
+            -F "file=@/tmp/test.txt")
+
+          if [ "$http_code" == "400" ]; then
+            echo "✅ Non-PDF rejection works correctly"
+          else
+            echo "❌ Expected 400, got $http_code"
+            exit 1
+          fi
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "=== Test Report ===" > test-report.txt
+          echo "Date: $(date)" >> test-report.txt
+          echo "Commit: ${{ github.sha }}" >> test-report.txt
+          echo "" >> test-report.txt
+          echo "Services Status:" >> test-report.txt
+          docker-compose ps >> test-report.txt
+          echo "" >> test-report.txt
+          echo "Health Check:" >> test-report.txt
+          curl -s http://localhost:${{ env.BACKEND_PORT }}/health >> test-report.txt
+          cat test-report.txt
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: test-report.txt
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up..."
+          docker-compose logs > docker-logs.txt
+          docker-compose down -v
+
+      - name: Upload Docker logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-logs
+          path: docker-logs.txt
+
+  # Optional: Deploy to staging/production
+  # deploy:
+  #   name: Deploy to Production
+  #   needs: test
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Deploy
+  #       run: |
+  #         echo "Deploy to production server"
+  #         # Add your deployment commands here
